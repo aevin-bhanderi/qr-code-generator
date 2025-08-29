@@ -4,69 +4,117 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QR Code Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-    #qrcode { margin: 20px auto; }
-    input, button { margin: 10px; padding: 8px; }
-    canvas { border: 1px solid #ccc; border-radius: 10px; }
+    #qrcode img { margin: auto; }
+    .logo-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+    }
   </style>
 </head>
-<body>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
-  <h1>QR Code Generator</h1>
-  <input type="text" id="link" placeholder="Enter URL" size="40">
-  <br>
-  <label>Foreground Color: <input type="color" id="fgColor" value="#000000"></label>
-  <label>Background Color: <input type="color" id="bgColor" value="#ffffff"></label>
-  <br>
-  <input type="file" id="logoInput" accept="image/*">
-  <br>
-  <button onclick="generateQRCode()">Generate QR</button>
-  <button onclick="downloadQRCode()">Download QR</button>
+  <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-md w-full text-center relative">
+    <h1 class="text-2xl font-bold mb-4 text-blue-600">QR Code Generator</h1>
+    <p class="text-gray-500 mb-6 text-sm">Enter a URL, customize color, add a logo, and download your QR code instantly!</p>
 
-  <div id="qrcode"></div>
+    <!-- URL Input -->
+    <input type="text" id="urlInput" placeholder="Enter your link here"
+      class="w-full p-2 border rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-400">
 
-  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <!-- Color Picker -->
+    <div class="flex items-center justify-between mb-3">
+      <label for="colorPicker" class="text-gray-600 text-sm">QR Color:</label>
+      <input type="color" id="colorPicker" value="#000000" class="ml-2 w-12 h-8 border rounded">
+    </div>
+
+    <!-- Logo Upload -->
+    <div class="flex items-center justify-between mb-3">
+      <label for="logoUpload" class="text-gray-600 text-sm">Upload Logo:</label>
+      <input type="file" id="logoUpload" accept="image/*" class="text-sm">
+    </div>
+
+    <!-- Generate Button -->
+    <button onclick="generateQR()"
+      class="w-full bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition mb-4">Generate QR</button>
+
+    <!-- QR Code Display -->
+    <div id="qrContainer" class="relative mb-4">
+      <div id="qrcode" class="flex justify-center"></div>
+      <img id="logoOverlay" class="logo-overlay hidden" />
+    </div>
+
+    <!-- Download Button -->
+    <button onclick="downloadQR()"
+      class="w-full bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition">Download QR Code</button>
+  </div>
+
   <script>
-    let logo = null;
+    let qrCode;
+    let logoImage;
 
-    document.getElementById('logoInput').addEventListener('change', function(e){
-      const reader = new FileReader();
-      reader.onload = function(event) { logo = event.target.result; };
-      reader.readAsDataURL(e.target.files[0]);
-    });
+    function generateQR() {
+      const url = document.getElementById("urlInput").value;
+      const color = document.getElementById("colorPicker").value;
+      const logoOverlay = document.getElementById("logoOverlay");
 
-    function generateQRCode() {
-      const link = document.getElementById('link').value;
-      const fg = document.getElementById('fgColor').value;
-      const bg = document.getElementById('bgColor').value;
-      const qrContainer = document.getElementById('qrcode');
-      qrContainer.innerHTML = ""; // Clear old QR
+      if (!url) {
+        alert("Please enter a URL");
+        return;
+      }
 
-      const canvas = document.createElement('canvas');
-      qrContainer.appendChild(canvas);
+      document.getElementById("qrcode").innerHTML = "";
 
-      QRCode.toCanvas(canvas, link, { color: { dark: fg, light: bg } }, function (error) {
-        if (!error && logo) {
-          const ctx = canvas.getContext('2d');
-          const img = new Image();
-          img.src = logo;
-          img.onload = function() {
-            const size = canvas.width * 0.2;
-            ctx.drawImage(img, (canvas.width - size) / 2, (canvas.height - size) / 2, size, size);
-          };
-        }
+      qrCode = new QRCode(document.getElementById("qrcode"), {
+        text: url,
+        width: 200,
+        height: 200,
+        colorDark: color,
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
       });
+
+      // Show logo if available
+      if (logoImage) {
+        logoOverlay.src = logoImage;
+        logoOverlay.classList.remove("hidden");
+      } else {
+        logoOverlay.classList.add("hidden");
+      }
     }
 
-    function downloadQRCode() {
-      const canvas = document.querySelector('#qrcode canvas');
-      const link = document.createElement('a');
-      link.download = "qrcode.png";
-      link.href = canvas.toDataURL("image/png");
+    // Handle Logo Upload
+    document.getElementById("logoUpload").addEventListener("change", function (event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          logoImage = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Download QR Code
+    function downloadQR() {
+      const qrCanvas = document.querySelector("#qrcode canvas");
+      if (!qrCanvas) {
+        alert("Please generate a QR code first");
+        return;
+      }
+
+      const link = document.createElement("a");
+      link.href = qrCanvas.toDataURL("image/png");
+      link.download = "QRCode.png";
       link.click();
     }
   </script>
-
 </body>
 </html>
