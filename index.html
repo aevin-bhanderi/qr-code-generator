@@ -1,49 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Code Generator</title>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 50px;
-        }
-        input {
-            padding: 10px;
-            width: 300px;
-        }
-        button {
-            padding: 10px;
-            margin: 10px;
-            cursor: pointer;
-        }
-        canvas {
-            margin-top: 20px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Code Generator</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+    #qrcode { margin: 20px auto; }
+    input, button { margin: 10px; padding: 8px; }
+    canvas { border: 1px solid #ccc; border-radius: 10px; }
+  </style>
 </head>
 <body>
-    <h1>QR Code Generator</h1>
-    <input type="text" id="linkInput" placeholder="Enter your link here">
-    <br>
-    <button onclick="generateQR()">Generate QR Code</button>
-    <br>
-    <canvas id="qrcode"></canvas>
 
-    <script>
-        function generateQR() {
-            const link = document.getElementById('linkInput').value;
-            if (link) {
-                QRCode.toCanvas(document.getElementById('qrcode'), link, function (error) {
-                    if (error) console.error(error);
-                });
-            } else {
-                alert("Please enter a link!");
-            }
+  <h1>QR Code Generator</h1>
+  <input type="text" id="link" placeholder="Enter URL" size="40">
+  <br>
+  <label>Foreground Color: <input type="color" id="fgColor" value="#000000"></label>
+  <label>Background Color: <input type="color" id="bgColor" value="#ffffff"></label>
+  <br>
+  <input type="file" id="logoInput" accept="image/*">
+  <br>
+  <button onclick="generateQRCode()">Generate QR</button>
+  <button onclick="downloadQRCode()">Download QR</button>
+
+  <div id="qrcode"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script>
+    let logo = null;
+
+    document.getElementById('logoInput').addEventListener('change', function(e){
+      const reader = new FileReader();
+      reader.onload = function(event) { logo = event.target.result; };
+      reader.readAsDataURL(e.target.files[0]);
+    });
+
+    function generateQRCode() {
+      const link = document.getElementById('link').value;
+      const fg = document.getElementById('fgColor').value;
+      const bg = document.getElementById('bgColor').value;
+      const qrContainer = document.getElementById('qrcode');
+      qrContainer.innerHTML = ""; // Clear old QR
+
+      const canvas = document.createElement('canvas');
+      qrContainer.appendChild(canvas);
+
+      QRCode.toCanvas(canvas, link, { color: { dark: fg, light: bg } }, function (error) {
+        if (!error && logo) {
+          const ctx = canvas.getContext('2d');
+          const img = new Image();
+          img.src = logo;
+          img.onload = function() {
+            const size = canvas.width * 0.2;
+            ctx.drawImage(img, (canvas.width - size) / 2, (canvas.height - size) / 2, size, size);
+          };
         }
-    </script>
+      });
+    }
+
+    function downloadQRCode() {
+      const canvas = document.querySelector('#qrcode canvas');
+      const link = document.createElement('a');
+      link.download = "qrcode.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    }
+  </script>
+
 </body>
 </html>
