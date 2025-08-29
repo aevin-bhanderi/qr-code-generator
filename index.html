@@ -3,118 +3,138 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QR Code Generator</title>
+  <title>QR Code & Link Tools</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <style>
-    #qrcode img { margin: auto; }
-    .logo-overlay {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-    }
-  </style>
+  <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-6">
 
-  <div class="bg-white p-6 rounded-2xl shadow-2xl max-w-md w-full text-center relative">
-    <h1 class="text-2xl font-bold mb-4 text-blue-600">QR Code Generator</h1>
-    <p class="text-gray-500 mb-6 text-sm">Enter a URL, customize color, add a logo, and download your QR code instantly!</p>
+  <h1 class="text-3xl font-bold text-blue-600 mb-6">QR Code & Link Utility Portal</h1>
 
-    <!-- URL Input -->
-    <input type="text" id="urlInput" placeholder="Enter your link here"
-      class="w-full p-2 border rounded mb-3 focus:outline-none focus:ring-2 focus:ring-blue-400">
+  <!-- Input Section -->
+  <div class="bg-white shadow-lg rounded-2xl p-6 w-full max-w-lg">
+    <label class="block mb-2 font-semibold">Enter Link:</label>
+    <input id="linkInput" type="text" placeholder="Paste your link here" 
+      class="w-full border p-2 rounded mb-4">
 
     <!-- Color Picker -->
-    <div class="flex items-center justify-between mb-3">
-      <label for="colorPicker" class="text-gray-600 text-sm">QR Color:</label>
-      <input type="color" id="colorPicker" value="#000000" class="ml-2 w-12 h-8 border rounded">
-    </div>
+    <label class="block mb-2 font-semibold">QR Color:</label>
+    <input id="colorInput" type="color" value="#000000" class="mb-4">
 
     <!-- Logo Upload -->
-    <div class="flex items-center justify-between mb-3">
-      <label for="logoUpload" class="text-gray-600 text-sm">Upload Logo:</label>
-      <input type="file" id="logoUpload" accept="image/*" class="text-sm">
-    </div>
+    <label class="block mb-2 font-semibold">Upload Logo (Optional):</label>
+    <input id="logoInput" type="file" accept="image/*" class="mb-4">
 
-    <!-- Generate Button -->
-    <button onclick="generateQR()"
-      class="w-full bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition mb-4">Generate QR</button>
+    <!-- Buttons -->
+    <div class="flex gap-3 mb-4">
+      <button onclick="generateQR()" 
+        class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Generate QR</button>
+      <button onclick="shortenLink()" 
+        class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Shorten Link</button>
+    </div>
 
     <!-- QR Code Display -->
-    <div id="qrContainer" class="relative mb-4">
-      <div id="qrcode" class="flex justify-center"></div>
-      <img id="logoOverlay" class="logo-overlay hidden" />
-    </div>
+    <div id="qrcode" class="flex justify-center mb-4"></div>
 
     <!-- Download Button -->
-    <button onclick="downloadQR()"
-      class="w-full bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition">Download QR Code</button>
+    <button id="downloadBtn" onclick="downloadQR()" 
+      class="hidden bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">Download QR Code</button>
   </div>
 
-  <script>
-    let qrCode;
-    let logoImage;
+  <!-- QR Scanner Section -->
+  <div class="bg-white shadow-lg rounded-2xl p-6 w-full max-w-lg mt-6">
+    <h2 class="text-xl font-bold mb-4">Scan QR Code</h2>
+    <div id="reader" style="width:100%"></div>
+    <p id="scanResult" class="mt-3 text-green-700 font-semibold"></p>
+    <button onclick="copyResult()" id="copyBtn" 
+      class="hidden mt-3 bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Copy Link</button>
+  </div>
 
-    function generateQR() {
-      const url = document.getElementById("urlInput").value;
-      const color = document.getElementById("colorPicker").value;
-      const logoOverlay = document.getElementById("logoOverlay");
+<script>
+  let qrCode;
+  let scannedLink = "";
 
-      if (!url) {
-        alert("Please enter a URL");
-        return;
-      }
+  function generateQR() {
+    const link = document.getElementById("linkInput").value;
+    const color = document.getElementById("colorInput").value;
+    const logoFile = document.getElementById("logoInput").files[0];
+    const qrDiv = document.getElementById("qrcode");
+    qrDiv.innerHTML = "";
 
-      document.getElementById("qrcode").innerHTML = "";
-
-      qrCode = new QRCode(document.getElementById("qrcode"), {
-        text: url,
-        width: 200,
-        height: 200,
-        colorDark: color,
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.H
-      });
-
-      // Show logo if available
-      if (logoImage) {
-        logoOverlay.src = logoImage;
-        logoOverlay.classList.remove("hidden");
-      } else {
-        logoOverlay.classList.add("hidden");
-      }
+    if (!link) {
+      alert("Please enter a link!");
+      return;
     }
 
-    // Handle Logo Upload
-    document.getElementById("logoUpload").addEventListener("change", function (event) {
-      const file = event.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          logoImage = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      }
+    qrCode = new QRCode(qrDiv, {
+      text: link,
+      width: 200,
+      height: 200,
+      colorDark: color,
+      colorLight: "#ffffff"
     });
 
-    // Download QR Code
-    function downloadQR() {
-      const qrCanvas = document.querySelector("#qrcode canvas");
-      if (!qrCanvas) {
-        alert("Please generate a QR code first");
-        return;
-      }
+    document.getElementById("downloadBtn").classList.remove("hidden");
 
-      const link = document.createElement("a");
-      link.href = qrCanvas.toDataURL("image/png");
-      link.download = "QRCode.png";
-      link.click();
+    // If logo is provided, add in center
+    if (logoFile) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = function () {
+          const qrCanvas = qrDiv.querySelector("canvas");
+          const ctx = qrCanvas.getContext("2d");
+          const logoSize = 50;
+          ctx.drawImage(img, (qrCanvas.width - logoSize) / 2, (qrCanvas.height - logoSize) / 2, logoSize, logoSize);
+        };
+      };
+      reader.readAsDataURL(logoFile);
     }
-  </script>
+  }
+
+  function downloadQR() {
+    const qrCanvas = document.querySelector("#qrcode canvas");
+    const link = document.createElement("a");
+    link.download = "qrcode.png";
+    link.href = qrCanvas.toDataURL();
+    link.click();
+  }
+
+  function shortenLink() {
+    const longUrl = document.getElementById("linkInput").value;
+    if (!longUrl) {
+      alert("Enter a link to shorten");
+      return;
+    }
+
+    fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`)
+      .then(res => res.text())
+      .then(shortUrl => {
+        document.getElementById("linkInput").value = shortUrl;
+        alert("Shortened URL: " + shortUrl);
+      });
+  }
+
+  // QR Scanner
+  function onScanSuccess(decodedText) {
+    scannedLink = decodedText;
+    document.getElementById("scanResult").innerText = "Scanned Link: " + decodedText;
+    document.getElementById("copyBtn").classList.remove("hidden");
+  }
+
+  const html5QrCode = new Html5Qrcode("reader");
+  Html5Qrcode.getCameras().then(cameras => {
+    if (cameras.length > 0) {
+      html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, onScanSuccess);
+    }
+  });
+
+  function copyResult() {
+    navigator.clipboard.writeText(scannedLink);
+    alert("Link copied: " + scannedLink);
+  }
+</script>
 </body>
 </html>
